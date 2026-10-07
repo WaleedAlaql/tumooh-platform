@@ -56,18 +56,6 @@
                 }
             });
         });
-
-        tableBody.querySelectorAll('.send-reminder').forEach(function (btn) {
-            btn.addEventListener('click', async function () {
-                const id = btn.getAttribute('data-id');
-                try {
-                    await window.TumoohApi.post('/interviews/' + id + '/send-reminder');
-                    btn.textContent = 'Sent';
-                } catch (err) {
-                    alert(err.message);
-                }
-            });
-        });
     }
 
     async function loadInterviews() {
@@ -99,8 +87,7 @@
                     }).join('') +
                     '</select></td>' +
                     '<td class="' + CELL + ' text-right whitespace-nowrap">' +
-                    '<button type="button" class="save-status text-tumooh-accent font-medium mr-3" data-id="' + row.interviewId + '">Save</button>' +
-                    '<button type="button" class="send-reminder text-tumooh-navy/70 underline" data-id="' + row.interviewId + '">Remind</button>' +
+                    '<button type="button" class="save-status text-tumooh-accent font-medium" data-id="' + row.interviewId + '">Save</button>' +
                     '</td></tr>';
             }).join('');
 

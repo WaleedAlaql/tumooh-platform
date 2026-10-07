@@ -1,6 +1,7 @@
 package org.fadhel.tumoohplatform.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.fadhel.tumoohplatform.Api.ApiException;
 import org.fadhel.tumoohplatform.dto.in.InterviewRequest;
 import org.fadhel.tumoohplatform.model.Interview;
@@ -18,6 +19,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class InterviewService {
 
     private final InterviewRepository interviewRepository;
@@ -64,6 +66,10 @@ public class InterviewService {
     public void updateInterview(Long id, InterviewRequest request) {
         Interview interview = getInterviewById(id);
 
+        if (request.getInterviewDate() != null
+                && !request.getInterviewDate().equals(interview.getInterviewDate())) {
+            interview.setReminderSent(false);
+        }
         interview.setInterviewDate(request.getInterviewDate());
         interview.setStatus(request.getStatus());
 
@@ -123,5 +129,28 @@ public class InterviewService {
                         "status", interview.getStatus() != null ? interview.getStatus() : "—"));
         interview.setReminderSent(true);
         interviewRepository.save(interview);
+    }
+
+    public void sendScheduledInterviewReminders() {
+        LocalDateTime now = LocalDateTime.now();
+        List<Interview> scheduled = interviewRepository.findByInterviewDateAfterAndStatusIgnoreCase(now, "SCHEDULED");
+        for (Interview interview : scheduled) {
+            if (Boolean.TRUE.equals(interview.getReminderSent())) {
+                continue;
+            }
+            LocalDateTime interviewDate = interview.getInterviewDate();
+            if (interviewDate == null) {
+                continue;
+            }
+            LocalDateTime sendAfter = interviewDate.minusDays(1);
+            if (now.isBefore(sendAfter)) {
+                continue;
+            }
+            try {
+                sendInterviewReminderEmail(interview.getId());
+            } catch (Exception e) {
+                log.warn("Scheduled interview reminder failed for id {}: {}", interview.getId(), e.getMessage());
+            }
+        }
     }
 }

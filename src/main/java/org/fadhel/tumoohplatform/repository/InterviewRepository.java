@@ -13,4 +13,6 @@ public interface InterviewRepository extends JpaRepository<Interview, Long> {
     List<Interview> findByStatus(String status);
     List<Interview> findByUserIdAndInterviewDateGreaterThanEqualOrderByInterviewDateAsc(
             Long userId, LocalDateTime from);
+
+    List<Interview> findByInterviewDateAfterAndStatusIgnoreCase(LocalDateTime after, String status);
 }
