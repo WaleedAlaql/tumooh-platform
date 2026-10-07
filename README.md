@@ -26,6 +26,28 @@
 
 Tumooh is a full-stack web platform that helps job seekers prepare for interviews and manage their career journey. It combines mock interviews with AI-driven evaluation, a suite of AI career tools, and job/application tracking — all in one place, powered by Google Gemini.
 
+## Team contributions
+
+### Waleed Alaql
+
+**Entities:** `User`, `MockInterview`, `Interview`  
+**Integrations:** Gmail SMTP (outbound HTML email), Google Gemini (mock-interview evaluation & company recommendations via shared `GeminiService`)
+
+**Extra REST endpoints (10):**
+
+| # | Method | Endpoint | Description |
+|---|---|---|---|
+| 1 | POST | `/api/v1/mock-interviews/start` | Creates a mock interview for the user and returns the session id, job title, and generated interview questions. |
+| 2 | POST | `/api/v1/mock-interviews/{id}/telemetry` | Saves session data for AI evaluation (`text/plain` body: speech transcript, timing, mic/camera flags). |
+| 3 | POST | `/api/v1/mock-interviews/{id}/evaluate` | Calls Gemini to score the session from saved telemetry; persists feedback and sends the feedback email on first successful evaluation. |
+| 4 | GET | `/api/v1/mock-interviews/{id}/results` | Returns stored AI scores and feedback text, or a message if evaluation is not done yet. |
+| 5 | GET | `/api/v1/users/{userId}/mock-interviews/summary` | Returns aggregate stats: total sessions, average AI score, and date of the last session. |
+| 6 | PATCH | `/api/v1/interviews/{id}/status` | Updates **interview** status only (e.g. `SCHEDULED`, `COMPLETED`, `CANCELLED`). |
+| 7 | GET | `/api/v1/users/{userId}/interviews/upcoming` | Lists upcoming interviews for the user. |
+| 8 | POST | `/api/v1/interviews/{id}/send-reminder` | Sends a Gmail HTML reminder to the user for that interview; sets `reminderSent` to true (also used by the scheduled job). |
+| 9 | POST | `/api/v1/mock-interviews/{id}/email-feedback` | Sends (or resends) the mock-interview AI feedback email after evaluation exists. |
+| 10 | POST | `/api/v1/ai/users/{userId}/company-recommendations` | Uses Gemini and the user profile major to return five recommended Saudi companies with reasons. |
+
 ## Features
 
 ### 🎤 Mock Interviews
