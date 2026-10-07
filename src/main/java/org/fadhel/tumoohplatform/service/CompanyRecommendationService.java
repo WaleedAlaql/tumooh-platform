@@ -11,7 +11,10 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -20,10 +23,13 @@ public class CompanyRecommendationService {
 
     private static final String COMPANIES_PATH = "data/saudi_companies.json";
     private static final int SAMPLE_SIZE = 35;
+    private static final String PLACEHOLDER_LOGO = "/images/logo-placeholder.png";
 
     private final ProfileService profileService;
     private final GeminiService geminiService;
     private final ObjectMapper objectMapper;
+
+    private Map<String, String> logoByNormalizedName;
 
     public CompanyRecommendationResponse getCompanyRecommendationsForUser(Long userId) {
         ProfileResponse profile;
@@ -74,10 +80,12 @@ public class CompanyRecommendationService {
             List<CompanyRecommendationResponse.RecommendedCompanyResponse> list = new ArrayList<>();
             if (recs != null && recs.isArray()) {
                 for (JsonNode node : recs) {
+                    String name = textOrEmpty(node, "name");
                     list.add(new CompanyRecommendationResponse.RecommendedCompanyResponse(
-                            textOrEmpty(node, "name"),
+                            name,
                             textOrEmpty(node, "industry"),
-                            textOrEmpty(node, "reason")));
+                            textOrEmpty(node, "reason"),
+                            resolveCompanyLogoUrl(name)));
                 }
             }
             return new CompanyRecommendationResponse(major, list);
@@ -113,5 +121,57 @@ public class CompanyRecommendationService {
     private static String textOrEmpty(JsonNode node, String field) {
         JsonNode val = node.get(field);
         return val != null && !val.isNull() ? val.asText() : "";
+    }
+
+    private String resolveCompanyLogoUrl(String recommendedName) {
+        if (recommendedName == null || recommendedName.isBlank()) {
+            return PLACEHOLDER_LOGO;
+        }
+        ensureLogoIndex();
+        String key = normalizeCompanyName(recommendedName);
+        String direct = logoByNormalizedName.get(key);
+        if (direct != null) {
+            return direct;
+        }
+        for (Map.Entry<String, String> entry : logoByNormalizedName.entrySet()) {
+            if (entry.getKey().contains(key) || key.contains(entry.getKey())) {
+                return entry.getValue();
+            }
+        }
+        return PLACEHOLDER_LOGO;
+    }
+
+    private void ensureLogoIndex() {
+        if (logoByNormalizedName != null) {
+            return;
+        }
+        logoByNormalizedName = new HashMap<>();
+        try (InputStream in = new ClassPathResource(COMPANIES_PATH).getInputStream()) {
+            JsonNode array = objectMapper.readTree(in);
+            for (JsonNode company : array) {
+                String logo = textOrEmpty(company, "companyLogoUrl");
+                if (logo.isBlank()) {
+                    logo = PLACEHOLDER_LOGO;
+                }
+                String nameEn = textOrEmpty(company, "nameEn");
+                if (!nameEn.isBlank()) {
+                    logoByNormalizedName.put(normalizeCompanyName(nameEn), logo);
+                }
+                JsonNode aliases = company.get("aliases");
+                if (aliases != null && aliases.isArray()) {
+                    for (JsonNode alias : aliases) {
+                        if (!alias.isNull() && !alias.asText().isBlank()) {
+                            logoByNormalizedName.putIfAbsent(normalizeCompanyName(alias.asText()), logo);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logoByNormalizedName = Map.of();
+        }
+    }
+
+    private static String normalizeCompanyName(String name) {
+        return name.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
     }
 }

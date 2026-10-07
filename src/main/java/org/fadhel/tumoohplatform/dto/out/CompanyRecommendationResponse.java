@@ -23,5 +23,6 @@ public class CompanyRecommendationResponse {
         private String name;
         private String industry;
         private String reason;
+        private String companyLogoUrl;
     }
 }
